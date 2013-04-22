@@ -13,10 +13,58 @@ void output_angles()
   }
   else if (output_format == OUTPUT__FORMAT_TEXT)
   {
-    Serial.print("#YPR=");
-    Serial.print(TO_DEG(yaw)); Serial.print(",");
-    Serial.print(TO_DEG(pitch)); Serial.print(",");
-    Serial.print(TO_DEG(roll)); Serial.println();
+    //Serial.print("#YPR=");
+    //Serial.print(TO_DEG(yaw)); Serial.print(",");
+    //Serial.print(TO_DEG(pitch)); Serial.print(",");
+    //Serial.print(TO_DEG(roll)); Serial.print(", "); //Serial.println();
+
+    if(!digitalRead(pin_switch_main) && switchstate) {
+      switchstate = false;
+      switchtime = millis() + switchdelay;
+    } else if (digitalRead(pin_switch_main) && !switchstate) {
+      switchstate = true;
+      switched = false;
+    }
+
+    if(!switchstate && !switched) {
+      if(switchtime < millis()) {
+        switched = true;
+        if(switchlevel == 0) {
+          yawcentre = TO_DEG(yaw);
+          pitchcentre = TO_DEG(pitch);
+          rollcentre = TO_DEG(roll);
+          switchlevel = 1;
+          servowrite = true;
+          //Serial.println("SET");
+        } else if (switchlevel == 1) {
+          yaw_uS = servo_yaw_ctr_uS;
+          pitch_uS = servo_pitch_ctr_uS;
+          roll_uS = servo_roll_ctr_uS;
+          servo_pitch.writeMicroseconds(yaw_uS);
+          servo_pitch.writeMicroseconds(pitch_uS);
+          servo_roll.writeMicroseconds(roll_uS);
+          switchlevel = 0;
+          servowrite = false;
+          //Serial.println("UNSET");
+        }
+      }
+    }
+
+    if(servowrite) {
+      //degToPWM(float guideReading, float guideCentre, int pwmCentre, int pwmMin, int pwmMax, float servodegrange);
+
+      yaw_uS = dTP.dtp(TO_DEG(yaw), yawcentre, servo_yaw_ctr_uS, 1450, 1550, 180);
+      pitch_uS = dTP.dtp(TO_DEG(pitch), pitchcentre, servo_pitch_ctr_uS, servoMin, servoMax, 90);  //1640
+      roll_uS = dTP.dtp(TO_DEG(roll), rollcentre, servo_roll_ctr_uS, servoMin, servoMax, 90);
+
+      //Serial.print(pitch_uS); Serial.print(",");
+      //Serial.print(roll_uS); Serial.println();
+
+      servo_yaw.writeMicroseconds(yaw_uS);
+      servo_pitch.writeMicroseconds(pitch_uS);
+      servo_roll.writeMicroseconds(roll_uS);
+    }
+
   }
 }
 

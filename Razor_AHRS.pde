@@ -302,6 +302,8 @@ const float magn_ellipsoid_transform[3][3] = {{0.902, -0.00354, 0.000636}, {-0.0
 #endif
 
 #include <Wire.h>
+#include <Servo.h>
+#include "degToPWM.h"
 
 // Sensor calibration scale and offset values
 #define ACCEL_X_OFFSET ((ACCEL_X_MIN + ACCEL_X_MAX) / 2.0f)
@@ -334,6 +336,39 @@ const float magn_ellipsoid_transform[3][3] = {{0.902, -0.00354, 0.000636}, {-0.0
 #define GRAVITY 256.0f // "1G reference" used for DCM filter and accelerometer calibration
 #define TO_RAD(x) (x * 0.01745329252)  // *pi/180
 #define TO_DEG(x) (x * 57.2957795131)  // *180/pi
+
+
+degToPWM dTP;
+boolean servowrite = false;
+boolean sensorset = false;
+boolean switchstate = true;
+int switchlevel = 0;
+int pin_switch_main = 12;
+unsigned long switchtime = millis();
+int switchdelay = 90;
+boolean switched = false;
+
+//servos
+Servo servo_yaw;  //spin in circles
+Servo servo_pitch; //flip forward or backward
+Servo servo_roll;  //do a carwheel
+int servoMin = 1050;
+int servoMax = 1950;
+
+int servo_yaw_ctr_uS = 1400;
+int servo_pitch_ctr_uS = 1640;
+int servo_roll_ctr_uS = 1500;
+
+int yaw_uS = 1500;
+int pitch_uS = 1640;
+int roll_uS = 1500;
+
+//sensor for servo
+float yawcentre = 0.0;
+float pitchcentre = 0.0;
+float rollcentre = 0.0;
+
+
 
 // Sensor variables
 float accel[3];  // Actually stores the NEGATED acceleration (equals gravity, if board not moving).
@@ -486,6 +521,17 @@ char readChar()
 
 void setup()
 {
+  //attach servos
+  servo_yaw.attach(3);
+  servo_pitch.attach(5);
+  servo_roll.attach(6);
+  servo_pitch.writeMicroseconds(yaw_uS);
+  servo_pitch.writeMicroseconds(pitch_uS);
+  servo_roll.writeMicroseconds(roll_uS);
+  //servo_roll.writeMicroseconds(1100);
+
+  pinMode(pin_switch_main, INPUT);
+
   // Init serial output
   Serial.begin(OUTPUT__BAUD_RATE);
   
@@ -515,6 +561,7 @@ void setup()
 // Main loop
 void loop()
 {
+
   // Read incoming control messages
   if (Serial.available() >= 2)
   {
@@ -641,6 +688,7 @@ void loop()
       Euler_angles();
       
       if (output_stream_on || output_single_on) output_angles();
+
     }
     else  // Output sensor values
     {      
